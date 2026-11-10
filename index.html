@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>北訓工讀工作台・登記待辦</title>
+<style>
+  :root{
+    --bg:#F6F1E6; --soft:#EFE7D6; --card:#FBF8F1; --line:#DCCFB2;
+    --ink:#3C3428; --ink2:#7A6E58; --ink3:#9C9078;
+    --accent:#6E4A2E; --sage:#6F7A57; --sage-t:#EAEEDD; --rose:#A0604F; --rose-t:#F3E3DD;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.65 -apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif}
+  header{background:var(--bg);border-bottom:1px solid var(--line);padding:14px 16px 12px}
+  h1{margin:0;font-size:18px;color:var(--accent)}
+  h1 small{font-weight:400;font-size:12.5px;color:var(--ink3);margin-left:6px}
+  main{max-width:560px;margin:0 auto;padding:16px 16px 60px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
+  h2{font-size:16px;color:var(--accent);margin:0 0 12px}
+  label{display:block;font-size:13px;font-weight:600;color:var(--ink2);margin-bottom:12px}
+  input,select,textarea{display:block;width:100%;margin-top:4px;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 10px}
+  textarea{min-height:70px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .seg{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+  .seg label{margin:0;font-weight:500}
+  .seg input{position:absolute;opacity:0;width:auto}
+  .seg span{display:inline-block;border:1px solid var(--line);background:var(--soft);color:var(--ink2);padding:5px 14px;border-radius:99px;cursor:pointer}
+  .seg input:checked+span{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  .btn{width:100%;border:0;background:var(--accent);color:var(--bg);font-family:inherit;font-weight:600;font-size:16px;padding:12px;border-radius:10px;cursor:pointer;letter-spacing:.05em}
+  .btn:disabled{opacity:.5}
+  .result{border-radius:12px;padding:12px 14px;font-size:14px;margin-bottom:16px}
+  .ok{background:var(--sage-t);color:var(--sage);border:1px solid var(--sage)}
+  .err{background:var(--rose-t);color:var(--rose);border:1px solid var(--rose)}
+  details{font-size:13px;color:var(--ink3)}
+  details input{font-size:12px}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header><h1>北訓工讀工作台<small>登記待辦</small></h1></header>
+<main>
+  <div class="result" id="result" hidden></div>
+  <form class="card" id="f">
+    <h2>交辦給工讀生</h2>
+    <label>交辦事項<input name="task" required maxlength="200" placeholder="例：教材夾頁 60 份"></label>
+    <div class="row">
+      <label>填表人<input name="filler" required maxlength="40" placeholder="例：王專員"></label>
+      <label>最後完成日期<input name="due" type="date" required></label>
+    </div>
+    <label>輕重緩急
+      <div class="seg">
+        <label><input type="radio" name="pri" value="急件"><span>急件</span></label>
+        <label><input type="radio" name="pri" value="一般" checked><span>一般</span></label>
+        <label><input type="radio" name="pri" value="不急"><span>不急</span></label>
+      </div>
+    </label>
+    <label>檔案路徑<input name="path" maxlength="300" placeholder="有檔案的話，貼上共用資料夾路徑或連結"></label>
+    <label>其他備註事項<textarea name="note" maxlength="500" placeholder="地點、份數、要找誰拿東西…"></textarea></label>
+    <button class="btn" id="btn">送出</button>
+  </form>
+  <details>
+    <summary>連線設定（測試用）</summary>
+    <label style="margin-top:8px">Power Automate 流程網址<input id="url"></label>
+  </details>
+</main>
+<script>
+  var FLOW_URL = 'https://default98390d4afee84b698883f8a6f35ddb.ac.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/30/workflows/716eeb84f533474393ffc6624bda62c1/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=3PIKUiB02X5Y7LrNts1LHGOX_4N2AaVmk1JouTnx_Ns';
+  var pad = function(n){return String(n).padStart(2,'0')};
+  var d = new Date(), today = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+  var f = document.getElementById('f'), btn = document.getElementById('btn'), res = document.getElementById('result');
+  document.getElementById('url').value = FLOW_URL;
+  f.due.value = today;
+
+  function show(cls, html){ res.className = 'result ' + cls; res.innerHTML = html; res.hidden = false; window.scrollTo(0,0); }
+
+  f.addEventListener('submit', function(e){
+    e.preventDefault();
+    var body = {
+      filler: f.filler.value.trim(), date: today, due: f.due.value,
+      pri: f.pri.value, task: f.task.value.trim(), path: f.path.value.trim(), note: f.note.value.trim()
+    };
+    btn.disabled = true; btn.textContent = '送出中…';
+    fetch(document.getElementById('url').value.trim(), {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)
+    }).then(function(r){
+      if (r.ok) {
+        show('ok', '✅ 已送出「' + body.task.replace(/</g,'&lt;') + '」，請到「代辦事項登記表」確認有沒有出現。');
+        f.task.value = ''; f.path.value = ''; f.note.value = '';
+      } else {
+        return r.text().then(function(t){ show('err', '❌ 流程回覆錯誤（代碼 ' + r.status + '）。請到 Power Automate 的「執行記錄」查看是哪一步失敗。<br><small>' + t.slice(0,200).replace(/</g,'&lt;') + '</small>'); });
+      }
+    }).catch(function(err){
+      show('err', '❌ 網頁沒有收到回應。請先到清單看看資料有沒有進去：<br>・<b>有進去</b>：代表流程正常，只是「回應」的標頭沒設好（Access-Control-Allow-Origin）。<br>・<b>沒進去</b>：可能是網址貼錯，或流程被擋下。<br><small>' + String(err).replace(/</g,'&lt;') + '</small>');
+    }).finally(function(){ btn.disabled = false; btn.textContent = '送出'; });
+  });
+</script>
+</body>
+</html>
